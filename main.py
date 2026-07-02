@@ -5,10 +5,10 @@ import tkinter as tk
 from tkinter import filedialog 
 import os   
 
-from estructura_hash import TablaHash # propia libreria que contiene la estructura de la tabla hash
+from estructura_hash import TablaHash, TablaHashProbing # propia libreria que contiene la estructura de la tabla hash
 
 
-def cargar_datos_desde_archivo(archivo, hash_table, lista_comun):
+def cargar_datos_desde_archivo(archivo, hash_table, hash_probing, lista_comun):
     cantidad = 0 # cantidad de contraseñas en el archivo
     try:
         with open(archivo, 'r', encoding='utf-8', errors='ignore') as f: # errors=ignore evita que el programa caiga
@@ -17,7 +17,9 @@ def cargar_datos_desde_archivo(archivo, hash_table, lista_comun):
                 if credencial: 
                     # 1. Inserta en la Tabla Hash O(1)
                     hash_table.insertar(credencial) 
-                    # 2. Inserta en la Lista Común de Python para la comparación O(n)
+                    # 2. Inserta en la Tabla Hash con Probing O(1)
+                    hash_probing.insertar(credencial)
+                    # 3. Inserta en la Lista Común de Python para la comparación O(n)
                     lista_comun.append(credencial)
                     
                     cantidad += 1   # aumenta la cantidad de contraseñas recorridas +1
@@ -40,7 +42,7 @@ def seleccionar_archivo_gui(titulo_ventana): # reutilizable
     )
     return ruta_archivo # devuelve la ruta del archivo seleccionado
 
-def analizar_y_reportar(ruta_consulta, hash_table, lista_comun, nombre_bd, largo_bd):
+def analizar_y_reportar(ruta_consulta, hash_table, hash_probing, lista_comun, nombre_bd, largo_bd):
     nombre_consulta = os.path.basename(ruta_consulta) # utiliza os para solo obtener el nombre del archivo
     print(f"[OK] Archivo a revisar seleccionado: {nombre_consulta}\n")
     print("--- RESULTADOS DE ESCANEO---") # titulo
@@ -66,18 +68,28 @@ def analizar_y_reportar(ruta_consulta, hash_table, lista_comun, nombre_bd, largo
             
             tiempo_fin_hash = time.perf_counter() 
             tiempo_ms_hash = (tiempo_fin_hash - tiempo_inicio_hash) * 1000 # diferencia de tiempo hash y *1000 para convertir a milisegundos
+
+            # 2. USANDO TABLA HASH CON PROBING...
+
+            tiempo_inicio_probing = time.perf_counter() 
+            for linea in consultas: 
+                pwd_sus = linea.strip() 
+                if pwd_sus:
+                    hash_probing.buscar(pwd_sus) 
+            tiempo_fin_probing = time.perf_counter() 
+            tiempo_ms_probing = (tiempo_fin_probing - tiempo_inicio_probing) * 1000 # diferencia de tiempo hash probing y *1000 para convertir a milisegundos
             
             
-            # 2. USANDO LISTA COMUN...
+            # 3. USANDO LISTA COMUN...
 
             tiempo_inicio_lineal = time.perf_counter() 
             
             for linea in consultas: 
                 pwd_sus = linea.strip() 
-                if pwd_sus: # sus XD
-                    # Búsqueda secuencial común en un arreglo O(n)
+                if pwd_sus: 
+                    # Búsqueda secuencial comun en un arreglo O(n)
                     if pwd_sus in lista_comun: 
-                        pass # Solo medimos el tiempo, no guardamos datos aquí para no duplicar
+                        pass # solo se mide el tiempo, pass 
             
             tiempo_fin_lineal = time.perf_counter() 
             tiempo_ms_lineal = (tiempo_fin_lineal - tiempo_inicio_lineal) * 1000 # diferencia de tiempo lineal y *1000 para convertir a milisegundos
@@ -101,8 +113,9 @@ def analizar_y_reportar(ruta_consulta, hash_table, lista_comun, nombre_bd, largo
                 f_reporte.write(f"{contrasenas_revisadas}\n\n") # cantidad de contraseñas revisadas
                 
                 f_reporte.write("[METRICAS DE RENDIMIENTO]\n")
-                f_reporte.write(f"Tiempo Busqueda Lineal Comun O(n)  : {tiempo_ms_lineal:.4f} ms\n") # se usa :..4f para 4 decimales
-                f_reporte.write(f"Tiempo Tabla Hash O(1)             : {tiempo_ms_hash:.4f} ms\n\n") # se usa :..4f para 4 decimales
+                f_reporte.write(f"Tiempo Busqueda Lineal Comun O(n)            : {tiempo_ms_lineal:.4f} ms\n") # se usa :..4f para 4 decimales
+                f_reporte.write(f"Tiempo Tabla Hash O(1) [Listas Enlazadas]    : {tiempo_ms_hash:.4f} ms\n") # se usa :..4f para 4 decimales
+                f_reporte.write(f"Tiempo Tabla Hash O(1) [Linear Probing]      : {tiempo_ms_probing:.4f} ms\n\n") # se usa :..4f para 4 decimales
                 
                 if len(lista_vulneradas) > 0: # si la lista de vulneradas tiene elementos...
 
@@ -117,8 +130,9 @@ def analizar_y_reportar(ruta_consulta, hash_table, lista_comun, nombre_bd, largo
 
             # EN LA CONSOLA SE IMPRIME...
             print(f"Total de vulnerabilidades halladas: {len(lista_vulneradas)}") 
-            print(f">>> Tiempo Busqueda Lineal Comun: {tiempo_ms_lineal:.4f} ms.")
-            print(f">>> Tiempo Tabla Hash           : {tiempo_ms_hash:.4f} ms.") 
+            print(f">>> Tiempo Busqueda Lineal Comun      : {tiempo_ms_lineal:.4f} ms.")
+            print(f">>> Tiempo Tabla Hash                 : {tiempo_ms_hash:.4f} ms.") 
+            print(f">>> Tiempo Hash [Linear Probing]      : {tiempo_ms_probing:.4f} ms.")
             print(f"\n[nice] Todo el detalle se ha exportado al archivo '{archivo_reporte}'.") 
             
     except Exception as e: # si ocurre algun error durante la ejecucion
@@ -144,18 +158,19 @@ def ejecutar_experimento():
     cap_variable = cantidadlineas * 2 # calcula la capacidad VARIABLE para la tabla hash
 
     hash_table = TablaHash(cap_variable) # crea tabla hash con capacdad variable
+    hash_probing = TablaHashProbing(cap_variable) # crea tabla hash con probing con capacdad variable
     lista_comun_bd = [] # arreglo comun para comparar rendimiento
 
     nombre_bd = os.path.basename(ruta_bd) 
     # carga datos en la tabla hash y la lista comun
-    largo_bd = cargar_datos_desde_archivo(ruta_bd, hash_table, lista_comun_bd) 
+    largo_bd = cargar_datos_desde_archivo(ruta_bd, hash_table, hash_probing, lista_comun_bd) 
     
     print("\n[PASO 2] Selecciona el ARCHIVO A REVISAR en la ventana emergente (puedes usar el archivo [PWD] que se encuentra en /archivos_ejemplo)")
     consulta = seleccionar_archivo_gui("2. Selecciona el archivo de contraseñas a revisar")
     
     if consulta:
         # se llama a la funcion analizar_y_reportar pasándole ambas estructuras
-        analizar_y_reportar(consulta, hash_table, lista_comun_bd, nombre_bd, largo_bd)
+        analizar_y_reportar(consulta, hash_table, hash_probing, lista_comun_bd, nombre_bd, largo_bd)
     else:
         print("[AVISO] No se seleccionó ningún archivo. Escaneo cancelado.")
 

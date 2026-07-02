@@ -46,3 +46,39 @@ class TablaHash: # estructura muy similar de tablahash en C++
             actual = actual.siguiente
             
         return False # si no se encuentra, bota False
+
+# Estructura de Tabla Hash con manejo de colisiones mediante linear probing:   
+class TablaHashProbing:
+    def __init__(self, capacidad):
+        self.capacidad = capacidad
+        self.tabla = [None] * capacidad
+
+    def _funcion_hash(self, cadena):
+        hash_val = 0
+        for caracter in cadena:
+            hash_val = (hash_val * 31 + ord(caracter)) % self.capacidad # aqui el hash function es distinto para evitar clustering (que todas las contraseñas caigan en los mismos indices)
+        return hash_val
+
+    def insertar(self, cadena):
+        indice = self._funcion_hash(cadena)
+        
+        # Linear Probing: busca el siguiente espacio vacío
+        while self.tabla[indice] is not None: # mientras que el nodo en el indice no sea None...
+            if self.tabla[indice] == cadena: # si la contraseña ya existe no se inserta
+                return # Evita duplicados
+            indice = (indice + 1) % self.capacidad # se mueve al siguiente indice 
+            
+        self.tabla[indice] = cadena # Inserta directamente el string
+
+    def buscar(self, cadena):
+        indice = self._funcion_hash(cadena)
+        indice_inicial = indice
+        
+        while self.tabla[indice] is not None:
+            if self.tabla[indice] == cadena:
+                return True
+            indice = (indice + 1) % self.capacidad
+            if indice == indice_inicial: # si ya dio la vuelta entera a la tabla
+                break
+                
+        return False   
