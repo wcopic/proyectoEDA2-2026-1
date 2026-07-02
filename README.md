@@ -1,6 +1,6 @@
 # Sistema de Deteccion de Credenciales (Proyecto EDA2)
 
-Este proyecto implementa un sistema para auditar credenciales y detectar contraseñas vulneradas. El programa realiza un experimento de rendimiento comparando el tiempo de ejecución entre una estructura de Tabla Hash (con complejidad O(1) mediante Separate Chaining) y una búsqueda lineal en un arreglo común (complejidad O(n)). 
+Este proyecto implementa un sistema para auditar credenciales y detectar contraseñas vulneradas. El programa realiza un experimento de rendimiento comparando el tiempo de ejecución entre una estructura de Tabla Hash (con complejidad O(1) mediante Separate Chaining), Tabla Hash (con complejidad O(1) mediante Linear Probing) y una búsqueda lineal en un arreglo común (complejidad O(n)). 
 
 [Aviso] Este proyecto no usa NINGUNA libreria externa, solo usa las nativas de Python.
 
